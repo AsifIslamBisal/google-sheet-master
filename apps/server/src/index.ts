@@ -9,6 +9,7 @@ import fastifyStatic from '@fastify/static';
 import { config } from './config.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMergeRoutes } from './routes/merge.js';
+import { registerIgCheckRoutes } from './routes/igCheck.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,12 +28,13 @@ await app.register(cors, {
 
 await registerAuthRoutes(app);
 await registerMergeRoutes(app);
+await registerIgCheckRoutes(app);
 
 const webDist = path.resolve(__dirname, '../../web/dist');
 if (existsSync(webDist)) {
   await app.register(fastifyStatic, { root: webDist, prefix: '/' });
   app.setNotFoundHandler((req, reply) => {
-    if (req.url.startsWith('/auth') || req.url.startsWith('/merge')) {
+    if (req.url.startsWith('/auth') || req.url.startsWith('/merge') || req.url.startsWith('/ig-check')) {
       reply.code(404).send({ error: 'not_found' });
       return;
     }

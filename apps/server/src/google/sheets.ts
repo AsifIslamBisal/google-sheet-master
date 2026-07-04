@@ -23,3 +23,25 @@ export const readColumnJ = async (
     .map((v) => (typeof v === 'string' ? v.trim() : String(v ?? '').trim()))
     .filter((v) => v.length > 0);
 };
+
+/**
+ * Sheet-এর সব rows পড়ে (সব columns) — IG Checker-এর জন্য।
+ * প্রতিটি row হলো string[] (empty cells = '')
+ */
+export const readAllRows = async (
+  auth: OAuth2Client,
+  spreadsheetId: string,
+): Promise<string[][]> => {
+  const sheets = google.sheets({ version: 'v4', auth });
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'A1:Z',
+    majorDimension: 'ROWS',
+  });
+  const rows = res.data.values ?? [];
+  return rows.map((row) =>
+    row.map((v) =>
+      typeof v === 'string' ? v.trim() : String(v ?? '').trim(),
+    ),
+  );
+};

@@ -77,3 +77,62 @@ export const startMerge = async (
     }
   }
 };
+
+export type IgCheckEvent =
+  | { type: 'start'; total: number }
+  | {
+      type: 'result';
+      index: number;
+      uid: string | null;
+      username: string | null;
+      active: boolean;
+      igUsername?: string;
+      reason?: string;
+    }
+  | {
+      type: 'done';
+      total: number;
+      activeCount: number;
+      inactiveCount: number;
+      skipped: number;
+    }
+  | { type: 'fatal'; error: string };
+
+export const startIgCheck = async (
+  sheetUrl: string,
+  onEvent: (e: IgCheckEvent) => void,
+): Promise<void> => {
+  const res = await fetch('/ig-check', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheetUrl }),
+  });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`ig-check request failed: ${res.status} ${text}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const chunk = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const line = chunk
+        .split('\n')
+        .find((l) => l.startsWith('data: '));
+      if (!line) continue;
+      try {
+        onEvent(JSON.parse(line.slice(6)) as IgCheckEvent);
+      } catch {
+        // ignore malformed event
+      }
+    }
+  }
+};
